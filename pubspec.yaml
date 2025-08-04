@@ -1,0 +1,68 @@
+name: wonder_door
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.0
+  http: ^1.2.2
+  provider: ^6.1.1
+  cached_network_image: ^3.3.1
+  google_fonts: ^6.1.0
+  path_provider_android: ^2.2.17
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data.json
+    - assets/image/hero/slideshow.jpg
+    - assets/image/WPC_Door/
+    - assets/image/Detail_WPC/
+    - assets/image/hardware/
+    - assets/image/logo/
+    - assets/image/Poster_Door/
+    - assets/image/Book/
+    - assets/image/Cover/
+    - assets/image/About/
+    - assets/image/poster_for_door/
+    - assets/image/poster_for_door/pic1.jpg
+    - assets/image/poster_for_door/pic2.jpg
+    - assets/image/poster_for_door/pic3.jpg
+    - assets/image/poster_for_door/pic4.jpg
+    - assets/image/poster_for_door/pic5.jpg
+    - assets/image/poster_for_door/pic6.jpg
+    - assets/image/poster_for_door/pic7.jpg
+    - assets/image/poster_for_door/pic8.jpg
+    - assets/image/poster_for_door/pic9.jpg
+    - assets/image/poster_for_door/pic10.jpg
+    - assets/image/poster_for_door/pic11.jpg
+    - assets/image/poster_for_door/pic12.jpg
+    - assets/image/poster_for_door/pic13.jpg
+    - assets/image/poster_for_door/pic14.jpg
+    - assets/image/poster_for_door/pic15.jpg
+    - assets/image/poster_for_door/pic16.jpg
+    - assets/image/poster_for_door/pic17.jpg
+    - assets/image/poster_for_door/pic18.jpg
+    - assets/image/poster_for_door/pic19.jpg
+    - assets/image/poster_for_door/pic20.jpg
+    - assets/image/poster_for_door/pic21.jpg
+    - assets/image/quality_product/
+    - assets/image/project/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/image/icon/wonder_door_.jpg"
