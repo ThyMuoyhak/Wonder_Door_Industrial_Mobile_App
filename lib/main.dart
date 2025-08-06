@@ -62,6 +62,80 @@ class AppUtils {
       ),
     );
   }
+
+  // Helper method to determine if a string is a URL
+  static bool isUrl(String path) {
+    return path.startsWith('http://') || path.startsWith('https://');
+  }
+
+  // Helper method to build image widget (URL or Asset)
+  static Widget buildImageWidget(
+    String imagePath, {
+    BoxFit fit = BoxFit.cover,
+    double? width,
+    double? height,
+    Widget? errorWidget,
+  }) {
+    Widget defaultErrorWidget = Container(
+      width: width,
+      height: height,
+      color: Colors.grey[100],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.image_not_supported_rounded,
+            size: 40,
+            color: Colors.grey[600],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Image Not Available',
+            style: GoogleFonts.poppins(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isUrl(imagePath)) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        fit: fit,
+        width: width,
+        height: height,
+        placeholder: (context, url) => Container(
+          width: width,
+          height: height,
+          color: Colors.grey[100],
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) {
+          print('Error loading network image $imagePath: $error');
+          return errorWidget ?? defaultErrorWidget;
+        },
+      );
+    } else {
+      return Image.asset(
+        imagePath,
+        fit: fit,
+        width: width,
+        height: height,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading asset image $imagePath: $error');
+          return errorWidget ?? defaultErrorWidget;
+        },
+      );
+    }
+  }
 }
 
 void main() {
@@ -191,20 +265,25 @@ class Product {
   factory Product.fromJson(Map<String, dynamic> json) {
     try {
       List<String> additionalImages = [];
+      
+      // Process additional images (image1, image2, etc.)
       for (int i = 1; i <= 10; i++) {
         String imageKey = 'image$i';
         if (json[imageKey] != null && json[imageKey].toString().isNotEmpty) {
-          String imagePath = json[imageKey].toString();
-          if (!imagePath.startsWith('assets/')) {
-            imagePath = 'assets$imagePath';
+          String imagePath = json[imageKey].toString().trim();
+          
+          // Don't modify URLs, only add assets/ prefix to local paths
+          if (!AppUtils.isUrl(imagePath) && !imagePath.startsWith('assets/')) {
+            imagePath = imagePath.startsWith('/') ? 'assets$imagePath' : 'assets/$imagePath';
           }
           additionalImages.add(imagePath);
         }
       }
 
-      String mainImage = json['image']?.toString() ?? '';
-      if (!mainImage.startsWith('assets/') && mainImage.isNotEmpty) {
-        mainImage = 'assets$mainImage';
+      // Process main image
+      String mainImage = json['image']?.toString().trim() ?? '';
+      if (mainImage.isNotEmpty && !AppUtils.isUrl(mainImage) && !mainImage.startsWith('assets/')) {
+        mainImage = mainImage.startsWith('/') ? 'assets$mainImage' : 'assets/$mainImage';
       }
 
       String fallbackImage = 'assets/images/fallback.jpg';
@@ -213,13 +292,13 @@ class Product {
         id: json['id'] ?? 0,
         title: json['title']?.toString() ?? 'Unknown Product',
         category: json['category']?.toString() ?? 'Unknown Category',
-        description: (json['description'] as List?)
+        description:
+            (json['description'] as List?)
                 ?.map((desc) => ProductDescription.fromJson(desc))
                 .toList() ??
             [],
         image: mainImage.isNotEmpty ? mainImage : fallbackImage,
-        additionalImages:
-            additionalImages.isNotEmpty ? additionalImages : [fallbackImage],
+        additionalImages: additionalImages.isNotEmpty ? additionalImages : [fallbackImage],
       );
     } catch (e) {
       print('❌ Error parsing product: $e');
@@ -231,7 +310,7 @@ class Product {
     List<String> allImages = [];
     if (image.isNotEmpty) allImages.add(image);
     allImages.addAll(additionalImages);
-    return allImages;
+    return allImages.toSet().toList(); // Remove duplicates
   }
 }
 
@@ -314,9 +393,7 @@ class _MainScreenState extends State<MainScreen> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF1E3A8A).withOpacity(0.1)
-              : Colors.transparent,
+          color: isSelected ? const Color(0xFF1E3A8A).withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -361,28 +438,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Product> _bestSaleProducts = [];
   List<Product> _qualityProducts = [];
   List<Product> _posterDoorProducts = [];
+  int _posterDoorDisplayCount = 8; // Initial number of poster door products to display
   bool _isLoading = true;
   bool _isLoadingMore = false;
+  bool _isLoadingMorePosterDoors = false;
   String _selectedCategory = 'WPC Door';
   int _currentPage = 0;
   final int _pageSize = 20;
 
   final List<Map<String, String>> _slideImages = [
-    {
-      'image': 'assets/image/hero/slideshow.jpg',
-      'title': '',
-      'subtitle': '',
-    },
-    {
-      'image': 'assets/image/hero/slideshow.jpg',
-      'title': '',
-      'subtitle': '',
-    },
-    {
-      'image': 'assets/image/hero/slideshow.jpg',
-      'title': '',
-      'subtitle': '',
-    },
+    {'image': 'assets/image/hero/slideshow.jpg', 'title': '', 'subtitle': ''},
+    {'image': 'assets/image/hero/slideshow.jpg', 'title': '', 'subtitle': ''},
+    {'image': 'assets/image/hero/slideshow.jpg', 'title': '', 'subtitle': ''},
   ];
 
   final List<Map<String, String>> _projectImages = [
@@ -432,9 +499,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore) {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 && !_isLoadingMore) {
       _loadMoreProducts();
     }
   }
@@ -448,17 +513,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         throw Exception('JSON root should be a List');
       }
 
-      final List<Product> loadedProducts =
-          jsonData.map<Product>((json) => Product.fromJson(json)).toList();
+      final List<Product> loadedProducts = jsonData.map<Product>((json) => Product.fromJson(json)).toList();
 
       setState(() {
         _products = loadedProducts;
         List<Product> filteredInitialProducts = loadedProducts.where((product) {
           String productCategory = product.category.toLowerCase();
-          return !productCategory.contains('poster') &&
-                 !productCategory.contains('quality door');
+          return !productCategory.contains('poster') && !productCategory.contains('quality door');
         }).toList();
-        
+
         _filteredProducts = _sortProductsByCategory(filteredInitialProducts);
         _filterProductsByCategory('WPC Door');
         _bestSaleProducts = loadedProducts
@@ -484,8 +547,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _loadMoreProducts() {
-    if (_isLoadingMore ||
-        (_currentPage + 1) * _pageSize >= _filteredProducts.length) {
+    if (_isLoadingMore || (_currentPage + 1) * _pageSize >= _filteredProducts.length) {
       return;
     }
 
@@ -497,23 +559,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         _currentPage++;
         _displayedProducts.addAll(
-          _filteredProducts
-              .skip(_currentPage * _pageSize)
-              .take(_pageSize)
-              .toList(),
+          _filteredProducts.skip(_currentPage * _pageSize).take(_pageSize).toList(),
         );
         _isLoadingMore = false;
       });
     });
   }
 
+  void _loadMorePosterDoors() {
+    if (_isLoadingMorePosterDoors || _posterDoorDisplayCount >= _posterDoorProducts.length) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMorePosterDoors = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        _posterDoorDisplayCount += 8;
+        _isLoadingMorePosterDoors = false;
+      });
+    });
+  }
+
   List<Product> _sortProductsByCategory(List<Product> products) {
-    final categoryPriority = {
-      'wpc': 1,
-      'wood': 2,
-      'hardware': 3,
-      'other': 4,
-    };
+    final categoryPriority = {'wpc': 1, 'wood': 2, 'hardware': 3, 'other': 4};
 
     return products.toList()
       ..sort((a, b) {
@@ -541,17 +612,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _selectedCategory = category;
       _currentPage = 0;
-      
+
       List<Product> baseProducts = _products.where((product) {
         String productCategory = product.category.toLowerCase();
-        return !productCategory.contains('poster') &&
-               !productCategory.contains('quality door');
+        return !productCategory.contains('poster') && !productCategory.contains('quality door');
       }).toList();
-      
+
       _filteredProducts = baseProducts.where((product) {
         String productCategory = product.category.toLowerCase();
         String selectedCategory = category.toLowerCase();
-        
+
         if (selectedCategory == 'wpc door') {
           return productCategory.contains('wpc');
         } else if (selectedCategory == 'wooden door') {
@@ -560,13 +630,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           return productCategory.contains('hardware');
         } else if (selectedCategory == 'other product') {
           return !productCategory.contains('wpc') &&
-                 !productCategory.contains('wood') &&
-                 !productCategory.contains('wooden') &&
-                 !productCategory.contains('hardware');
+              !productCategory.contains('wood') &&
+              !productCategory.contains('wooden') &&
+              !productCategory.contains('hardware');
         }
         return productCategory.contains(selectedCategory);
       }).toList();
-      
+
       _displayedProducts = _filteredProducts.take(_pageSize).toList();
     });
   }
@@ -597,22 +667,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 return Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.asset(
+                    AppUtils.buildImageWidget(
                       _slideImages[index]['image']!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        print('Error loading hero image ${_slideImages[index]['image']}: $error');
-                        return Container(
-                          color: const Color(0xFF1E3A8A),
-                          child: const Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              size: 60,
-                              color: Colors.white,
-                            ),
+                      errorWidget: Container(
+                        color: const Color(0xFF1E3A8A),
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported,
+                            size: 60,
+                            color: Colors.white,
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ],
                 );
@@ -678,8 +745,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _bestSaleProducts.length,
-                    itemBuilder: (context, index) =>
-                        _buildBestSaleCard(_bestSaleProducts[index], index),
+                    itemBuilder: (context, index) => _buildBestSaleCard(_bestSaleProducts[index], index),
                     separatorBuilder: (context, index) => const SizedBox(width: 12),
                   ),
                 ),
@@ -706,20 +772,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
+          child: AppUtils.buildImageWidget(
             product.image,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              print('Error loading best sale image ${product.image}: $error');
-              return Image.asset(
-                'assets/images/fallback.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading fallback image: $error');
-                  return const Icon(Icons.image_not_supported, size: 50);
-                },
-              );
-            },
+            width: 150,
+            height: 150,
           ),
         ),
       ),
@@ -748,7 +805,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: GestureDetector(
-                    onTap: () => _showImageModal(context, _projectImages[index]['title']!, _projectImages[index]['image']!),
+                    onTap: () => _showImageModal(
+                      context,
+                      _projectImages[index]['title']!,
+                      _projectImages[index]['image']!,
+                    ),
                     child: Container(
                       height: 150,
                       decoration: BoxDecoration(
@@ -766,33 +827,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.asset(
+                            AppUtils.buildImageWidget(
                               _projectImages[index]['image']!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                print('Error loading project image ${_projectImages[index]['image']}: $error');
-                                return Container(
-                                  color: Colors.grey[100],
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.image_not_supported_rounded,
-                                        size: 40,
-                                        color: Colors.grey[600],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Project Image',
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
                             ),
                             Container(
                               decoration: BoxDecoration(
@@ -856,8 +893,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _qualityProducts.length,
-                    itemBuilder: (context, index) =>
-                        _buildQualityProductCard(_qualityProducts[index], index),
+                    itemBuilder: (context, index) => _buildQualityProductCard(_qualityProducts[index], index),
                     separatorBuilder: (context, index) => const SizedBox(width: 12),
                   ),
                 ),
@@ -884,25 +920,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                product.image,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading quality product image ${product.image}: $error');
-                  return Image.asset(
-                    'assets/images/fallback.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      print('Error loading fallback image: $error');
-                      return const Icon(Icons.image_not_supported, size: 50);
-                    },
-                  );
-                },
-              ),
-            ],
+          child: AppUtils.buildImageWidget(
+            product.image,
+            fit: BoxFit.cover,
+            width: 150,
+            height: 150,
           ),
         ),
       ),
@@ -929,8 +951,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _warrantyImages.length,
-              itemBuilder: (context, index) =>
-                  _buildWarrantyCard(_warrantyImages[index], index),
+              itemBuilder: (context, index) => _buildWarrantyCard(_warrantyImages[index], index),
               separatorBuilder: (context, index) => const SizedBox(width: 12),
             ),
           ),
@@ -957,38 +978,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                warranty['image']!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading warranty image ${warranty['image']}: $error');
-                  return Container(
-                    color: Colors.grey[100],
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_not_supported_rounded,
-                          size: 40,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Warranty Image',
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
+          child: AppUtils.buildImageWidget(
+            warranty['image']!,
+            fit: BoxFit.cover,
+            width: 150,
+            height: 150,
           ),
         ),
       ),
@@ -996,9 +990,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPosterDoorSection() {
-    final int halfLength = (_posterDoorProducts.length / 2).ceil();
-    final List<Product> firstRow = _posterDoorProducts.take(halfLength).toList();
-    final List<Product> secondRow = _posterDoorProducts.skip(halfLength).toList();
+    final displayedPosterDoors = _posterDoorProducts.take(_posterDoorDisplayCount).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1006,7 +998,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Door Products',
+            'Popular products',
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -1014,31 +1006,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 12),
-          _posterDoorProducts.isEmpty
+          displayedPosterDoors.isEmpty
               ? const Center(child: Text('No Door Products Available'))
               : Column(
                   children: [
-                    SizedBox(
-                      height: 150,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: firstRow.length,
-                        itemBuilder: (context, index) =>
-                            _buildPosterDoorCard(firstRow[index], index),
-                        separatorBuilder: (context, index) => const SizedBox(width: 12),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1,
                       ),
+                      itemCount: displayedPosterDoors.length,
+                      itemBuilder: (context, index) => _buildPosterDoorCard(displayedPosterDoors[index], index),
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 150,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: secondRow.length,
-                        itemBuilder: (context, index) =>
-                            _buildPosterDoorCard(secondRow[index], index),
-                        separatorBuilder: (context, index) => const SizedBox(width: 12),
+                    if (_posterDoorDisplayCount < _posterDoorProducts.length)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: _isLoadingMorePosterDoors
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E3A8A)),
+                                ),
+                              )
+                            : ElevatedButton(
+                                onPressed: _loadMorePosterDoors,
+                                child: Text(
+                                  'Load More',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                       ),
-                    ),
                   ],
                 ),
         ],
@@ -1050,8 +1054,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return GestureDetector(
       onTap: () => _showImageModal(context, product.title, product.image),
       child: Container(
-        width: 150,
-        height: 150,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
@@ -1064,25 +1066,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                product.image,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading poster door image ${product.image}: $error');
-                  return Image.asset(
-                    'assets/images/fallback.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      print('Error loading fallback image: $error');
-                      return const Icon(Icons.image_not_supported, size: 50);
-                    },
-                  );
-                },
-              ),
-              ],
+          child: AppUtils.buildImageWidget(
+            product.image,
+            fit: BoxFit.cover,
           ),
         ),
       ),
@@ -1119,35 +1105,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   minScale: 0.5,
                   maxScale: 4.0,
                   child: Center(
-                    child: Image.asset(
+                    child: AppUtils.buildImageWidget(
                       imagePath,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        print('Error loading modal image $imagePath: $error');
-                        return Container(
-                          color: Colors.grey[900],
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.image_not_supported_rounded,
-                                  size: 48,
-                                  color: Colors.grey[600],
+                      errorWidget: Container(
+                        color: Colors.grey[900],
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.image_not_supported_rounded,
+                                size: 48,
+                                color: Colors.grey[600],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Image Not Available',
+                                style: GoogleFonts.roboto(
+                                  color: Colors.grey[400],
+                                  fontSize: 14,
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Image Not Available',
-                                  style: GoogleFonts.roboto(
-                                    color: Colors.grey[400],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1157,7 +1140,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 padding: const EdgeInsets.all(16),
                 child: Card(
                   color: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -1235,8 +1220,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     String categoryLower = category.toLowerCase();
     if (categoryLower.contains('wpc')) {
       return const Color(0xFF10B981);
-    } else if (categoryLower.contains('wooden') ||
-        categoryLower.contains('wood')) {
+    } else if (categoryLower.contains('wooden') || categoryLower.contains('wood')) {
       return const Color(0xFFF59E0B);
     } else if (categoryLower.contains('security')) {
       return const Color(0xFF1E3A8A);
@@ -1253,8 +1237,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     String categoryLower = category.toLowerCase();
     if (categoryLower.contains('wpc')) {
       return Icons.eco_rounded;
-    } else if (categoryLower.contains('wooden') ||
-        categoryLower.contains('wood')) {
+    } else if (categoryLower.contains('wooden') || categoryLower.contains('wood')) {
       return Icons.forest_rounded;
     } else if (categoryLower.contains('security')) {
       return Icons.security_rounded;
@@ -1325,20 +1308,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 String imagePath = product.getAllImages()[imageIndex];
                                                 return Hero(
                                                   tag: 'product-image-${product.id}-$imageIndex',
-                                                  child: Image.asset(
+                                                  child: AppUtils.buildImageWidget(
                                                     imagePath,
                                                     fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) {
-                                                      print('Error loading product image $imagePath: $error');
-                                                      return Image.asset(
-                                                        'assets/images/fallback.jpg',
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (context, error, stackTrace) {
-                                                          print('Error loading fallback image: $error');
-                                                          return const Icon(Icons.image_not_supported, size: 50);
-                                                        },
-                                                      );
-                                                    },
                                                   ),
                                                 );
                                               },
@@ -1349,8 +1321,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           top: 8,
                                           right: 8,
                                           child: IconButton(
-                                            icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
-                                            onPressed: () => _showImageModal(context, product.title, product.getAllImages()[currentImageIndex]),
+                                            icon: const Icon(
+                                              Icons.fullscreen_rounded,
+                                              color: Colors.white,
+                                            ),
+                                            onPressed: () => _showImageModal(
+                                              context,
+                                              product.title,
+                                              product.getAllImages()[currentImageIndex],
+                                            ),
                                           ),
                                         ),
                                         if (product.getAllImages().length > 1)
@@ -1378,13 +1357,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                       ],
                                     )
-                                  : Image.asset(
+                                  : AppUtils.buildImageWidget(
                                       'assets/images/fallback.jpg',
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        print('Error loading fallback image: $error');
-                                        return const Icon(Icons.image_not_supported, size: 50);
-                                      },
                                     ),
                             ),
                           ),
@@ -1427,41 +1402,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   style: Theme.of(context).textTheme.displayLarge,
                                 ),
                                 const SizedBox(height: 16),
-                                ...product.description.asMap().entries.map(
-                                      (entry) {
-                                        int index = entry.key;
-                                        ProductDescription desc = entry.value;
-                                        return AnimatedContainer(
-                                          duration: Duration(milliseconds: 200 + (index * 50)),
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[50],
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                flex: 2,
-                                                child: Text(
-                                                  desc.key,
-                                                  style: Theme.of(context).textTheme.titleMedium,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                flex: 3,
-                                                child: Text(
-                                                  desc.value,
-                                                  style: Theme.of(context).textTheme.bodyMedium,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                ...product.description.asMap().entries.map((entry) {
+                                  int index = entry.key;
+                                  ProductDescription desc = entry.value;
+                                  return AnimatedContainer(
+                                    duration: Duration(milliseconds: 200 + (index * 50)),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[50],
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            desc.key,
+                                            style: Theme.of(context).textTheme.titleMedium,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            desc.value,
+                                            style: Theme.of(context).textTheme.bodyMedium,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
                               ],
                             ),
                           ),
@@ -1543,8 +1516,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       path: AppConfig.email,
       queryParameters: {
         'subject': 'Product Inquiry - Wonder Door Industrial',
-        'body':
-            'Hello,\n\nI am interested in your door products and would like to get more information.\n\nBest regards,\n',
+        'body': 'Hello,\n\nI am interested in your door products and would like to get more information.\n\nBest regards,\n',
       },
     );
 
@@ -1562,21 +1534,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _launchTelegram(BuildContext context) async {
     try {
       final Uri telegramAppUri = Uri.parse(AppConfig.telegramAppUrl);
-      
+
       if (await canLaunchUrl(telegramAppUri)) {
         await launchUrl(telegramAppUri, mode: LaunchMode.externalApplication);
         return;
       }
-      
+
       final Uri telegramWebUri = Uri.parse(AppConfig.telegramUrl);
-      
+
       if (await canLaunchUrl(telegramWebUri)) {
         await launchUrl(telegramWebUri, mode: LaunchMode.externalApplication);
         return;
       }
-      
+
       _showSnackBar(context, 'Please open Telegram and search for ${AppConfig.telegramHandle}');
-      
     } catch (e) {
       print('Error launching Telegram: $e');
       _showSnackBar(context, 'Please open Telegram and search for ${AppConfig.telegramHandle}');
@@ -1661,10 +1632,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Close',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1714,10 +1682,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: ProductSearchDelegate(
-                  _products,
-                  _showProductDetails,
-                ),
+                delegate: ProductSearchDelegate(_products, _showProductDetails),
               );
             },
           ),
@@ -1770,12 +1735,8 @@ class ProductSearchDelegate extends SearchDelegate<String> {
         ),
         filled: true,
         fillColor: Colors.white.withOpacity(0.2),
-        hintStyle: GoogleFonts.roboto(
-          color: Colors.white70,
-          fontSize: 16,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        hintStyle: GoogleFonts.roboto(color: Colors.white70, fontSize: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -1801,16 +1762,12 @@ class ProductSearchDelegate extends SearchDelegate<String> {
   @override
   Widget buildResults(BuildContext context) {
     final results = products
-        .where(
-          (product) =>
-              product.title.toLowerCase().contains(query.toLowerCase()) ||
-              product.category.toLowerCase().contains(query.toLowerCase()) ||
-              product.description.any(
-                (desc) =>
-                    desc.key.toLowerCase().contains(query.toLowerCase()) ||
-                    desc.value.toLowerCase().contains(query.toLowerCase()),
-              ),
-        )
+        .where((product) =>
+            product.title.toLowerCase().contains(query.toLowerCase()) ||
+            product.category.toLowerCase().contains(query.toLowerCase()) ||
+            product.description.any((desc) =>
+                desc.key.toLowerCase().contains(query.toLowerCase()) ||
+                desc.value.toLowerCase().contains(query.toLowerCase())))
         .toList();
 
     return ListView.builder(
@@ -1827,13 +1784,12 @@ class ProductSearchDelegate extends SearchDelegate<String> {
               child: SizedBox(
                 width: 48,
                 height: 48,
-                child: Image.asset(
+                child: AppUtils.buildImageWidget(
                   product.image,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    print('Error loading search result image ${product.image}: $error');
-                    return const Icon(Icons.image_not_supported_rounded);
-                  },
+                  width: 48,
+                  height: 48,
+                  errorWidget: const Icon(Icons.image_not_supported_rounded),
                 ),
               ),
             ),
@@ -1867,16 +1823,12 @@ class ProductSearchDelegate extends SearchDelegate<String> {
   @override
   Widget buildSuggestions(BuildContext context) {
     final suggestions = products
-        .where(
-          (product) =>
-              product.title.toLowerCase().contains(query.toLowerCase()) ||
-              product.category.toLowerCase().contains(query.toLowerCase()) ||
-              product.description.any(
-                (desc) =>
-                    desc.key.toLowerCase().contains(query.toLowerCase()) ||
-                    desc.value.toLowerCase().contains(query.toLowerCase()),
-              ),
-        )
+        .where((product) =>
+            product.title.toLowerCase().contains(query.toLowerCase()) ||
+            product.category.toLowerCase().contains(query.toLowerCase()) ||
+            product.description.any((desc) =>
+                desc.key.toLowerCase().contains(query.toLowerCase()) ||
+                desc.value.toLowerCase().contains(query.toLowerCase())))
         .take(5)
         .toList();
 

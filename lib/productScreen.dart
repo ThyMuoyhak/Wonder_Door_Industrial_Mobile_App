@@ -31,21 +31,27 @@ class Product {
         (json['additionalImages'] as List<dynamic>?)?.cast<String>() ?? [];
 
     // Fix relative paths
-    if (image.isNotEmpty && !image.startsWith('assets/') && !image.startsWith('http')) {
+    if (image.isNotEmpty &&
+        !image.startsWith('assets/') &&
+        !image.startsWith('http')) {
       image = image.startsWith('/') ? '$baseUrl$image' : '$baseUrl/$image';
     }
-    additionalImages = additionalImages.map((img) {
-      if (img.isNotEmpty && !img.startsWith('assets/') && !img.startsWith('http')) {
-        return img.startsWith('/') ? '$baseUrl$img' : '$baseUrl/$img';
-      }
-      return img;
-    }).toList();
+    additionalImages =
+        additionalImages.map((img) {
+          if (img.isNotEmpty &&
+              !img.startsWith('assets/') &&
+              !img.startsWith('http')) {
+            return img.startsWith('/') ? '$baseUrl$img' : '$baseUrl/$img';
+          }
+          return img;
+        }).toList();
 
     return Product(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unknown',
       category: json['category'] ?? 'Other',
-      description: (json['description'] as List<dynamic>?)
+      description:
+          (json['description'] as List<dynamic>?)
               ?.map((desc) => ProductDescription.fromJson(desc))
               .toList() ??
           [],
@@ -114,22 +120,28 @@ class ProductSearchDelegate extends SearchDelegate<Product> {
 
   @override
   Widget buildResults(BuildContext context) {
-    final results = products
-        .where((product) =>
-            product.title.toLowerCase().contains(query.toLowerCase()) ||
-            product.category.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    final results =
+        products
+            .where(
+              (product) =>
+                  product.title.toLowerCase().contains(query.toLowerCase()) ||
+                  product.category.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return _buildSearchResults(context, results);
   }
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    final suggestions = products
-        .where((product) =>
-            product.title.toLowerCase().contains(query.toLowerCase()) ||
-            product.category.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    final suggestions =
+        products
+            .where(
+              (product) =>
+                  product.title.toLowerCase().contains(query.toLowerCase()) ||
+                  product.category.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return _buildSearchResults(context, suggestions);
   }
@@ -148,21 +160,29 @@ class ProductSearchDelegate extends SearchDelegate<Product> {
             product.category,
             style: GoogleFonts.poppins(color: Colors.grey[600]),
           ),
-          leading: product.image.isNotEmpty
-              ? product.image.startsWith('assets/')
-                  ? Image.asset(product.image, width: 50, height: 50, fit: BoxFit.contain)
-                  : CachedNetworkImage(
-                      imageUrl: product.image,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => AppUtils.buildImageLoadingWidget(),
-                      errorWidget: (context, url, error) {
-                        print('Search image error for $url: $error');
-                        return const Icon(Icons.error);
-                      },
-                    )
-              : const Icon(Icons.image_not_supported),
+          leading:
+              product.image.isNotEmpty
+                  ? product.image.startsWith('assets/')
+                      ? Image.asset(
+                        product.image,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                      )
+                      : CachedNetworkImage(
+                        imageUrl: product.image,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                        placeholder:
+                            (context, url) =>
+                                AppUtils.buildImageLoadingWidget(),
+                        errorWidget: (context, url, error) {
+                          print('Search image error for $url: $error');
+                          return const Icon(Icons.error);
+                        },
+                      )
+                  : const Icon(Icons.image_not_supported),
           onTap: () {
             showProductDetails(product);
           },
@@ -270,7 +290,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
       setState(() {
         _currentPage++;
         _displayedProducts.addAll(
-          _filteredProducts().skip(_currentPage * _pageSize).take(_pageSize).toList(),
+          _filteredProducts()
+              .skip(_currentPage * _pageSize)
+              .take(_pageSize)
+              .toList(),
         );
         _isLoadingMore = false;
       });
@@ -278,32 +301,29 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   List<Product> _sortProductsByCategory(List<Product> products) {
-    final categoryPriority = {
-      'wpc': 1,
-      'wood': 2,
-      'hardware': 3,
-    };
+    final categoryPriority = {'wpc': 1, 'wood': 2, 'hardware': 3};
 
-    return products.toList()
-      ..sort((a, b) {
-        String aCategory = a.category.toLowerCase();
-        String bCategory = b.category.toLowerCase();
+    return products.toList()..sort((a, b) {
+      String aCategory = a.category.toLowerCase();
+      String bCategory = b.category.toLowerCase();
 
-        int aPriority = categoryPriority.entries
-            .firstWhere(
-              (entry) => aCategory.contains(entry.key),
-              orElse: () => const MapEntry('other', 4),
-            )
-            .value;
-        int bPriority = categoryPriority.entries
-            .firstWhere(
-              (entry) => bCategory.contains(entry.key),
-              orElse: () => const MapEntry('other', 4),
-            )
-            .value;
+      int aPriority =
+          categoryPriority.entries
+              .firstWhere(
+                (entry) => aCategory.contains(entry.key),
+                orElse: () => const MapEntry('other', 4),
+              )
+              .value;
+      int bPriority =
+          categoryPriority.entries
+              .firstWhere(
+                (entry) => bCategory.contains(entry.key),
+                orElse: () => const MapEntry('other', 4),
+              )
+              .value;
 
-        return aPriority.compareTo(bPriority);
-      });
+      return aPriority.compareTo(bPriority);
+    });
   }
 
   List<Product> _filteredProducts() {
@@ -312,35 +332,32 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   List<Product> _applyCategoryFilter(List<Product> products, String? category) {
     if (category == null || category == 'All Products') {
-      return products
-          .where((product) {
-            String categoryLower = product.category.toLowerCase();
-            return !categoryLower.contains('poster') &&
-                !categoryLower.contains('quality door');
-          })
-          .toList();
+      return products.where((product) {
+        String categoryLower = product.category.toLowerCase();
+        return !categoryLower.contains('poster') &&
+            !categoryLower.contains('quality door');
+      }).toList();
     }
 
-    return products
-        .where((product) {
-          String categoryLower = product.category.toLowerCase();
-          if (category == 'WPC Door') {
-            return categoryLower.contains('wpc');
-          } else if (category == 'Wooden Door') {
-            return categoryLower.contains('wood') || categoryLower.contains('wooden');
-          } else if (category == 'Hardware') {
-            return categoryLower.contains('hardware');
-          } else if (category == 'Other') {
-            return !categoryLower.contains('wpc') &&
-                !categoryLower.contains('wood') &&
-                !categoryLower.contains('wooden') &&
-                !categoryLower.contains('hardware') &&
-                !categoryLower.contains('poster') &&
-                !categoryLower.contains('quality door');
-          }
-          return false;
-        })
-        .toList();
+    return products.where((product) {
+      String categoryLower = product.category.toLowerCase();
+      if (category == 'WPC Door') {
+        return categoryLower.contains('wpc');
+      } else if (category == 'Wooden Door') {
+        return categoryLower.contains('wood') ||
+            categoryLower.contains('wooden');
+      } else if (category == 'Hardware') {
+        return categoryLower.contains('hardware');
+      } else if (category == 'Other') {
+        return !categoryLower.contains('wpc') &&
+            !categoryLower.contains('wood') &&
+            !categoryLower.contains('wooden') &&
+            !categoryLower.contains('hardware') &&
+            !categoryLower.contains('poster') &&
+            !categoryLower.contains('quality door');
+      }
+      return false;
+    }).toList();
   }
 
   void _selectCategory(String? category) {
@@ -348,7 +365,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
       _selectedCategory = category;
       _currentPage = 0;
       _displayedProducts =
-          _applyCategoryFilter(_products, _selectedCategory).take(_pageSize).toList();
+          _applyCategoryFilter(
+            _products,
+            _selectedCategory,
+          ).take(_pageSize).toList();
     });
   }
 
@@ -356,7 +376,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     String categoryLower = category.toLowerCase();
     if (categoryLower.contains('wpc')) {
       return const Color(0xFF10B981);
-    } else if (categoryLower.contains('wooden') || categoryLower.contains('wood')) {
+    } else if (categoryLower.contains('wooden') ||
+        categoryLower.contains('wood')) {
       return const Color(0xFFF59E0B);
     } else if (categoryLower.contains('security')) {
       return const Color(0xFF1E3A8A);
@@ -371,7 +392,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     String categoryLower = category.toLowerCase();
     if (categoryLower.contains('wpc')) {
       return Icons.eco_rounded;
-    } else if (categoryLower.contains('wooden') || categoryLower.contains('wood')) {
+    } else if (categoryLower.contains('wooden') ||
+        categoryLower.contains('wood')) {
       return Icons.forest_rounded;
     } else if (categoryLower.contains('security')) {
       return Icons.security_rounded;
@@ -388,38 +410,46 @@ class _ProductsScreenState extends State<ProductsScreen> {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: categories.map((category) {
-          final isSelected =
-              _selectedCategory == category || (category == 'All' && _selectedCategory == null);
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(
-                category,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey[600],
+        children:
+            categories.map((category) {
+              final isSelected =
+                  _selectedCategory == category ||
+                  (category == 'All' && _selectedCategory == null);
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(
+                    category,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isSelected
+                              ? const Color(0xFF1E3A8A)
+                              : Colors.grey[600],
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: const Color(0xFF1E3A8A).withOpacity(0.2),
+                  backgroundColor: Colors.grey[100],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color:
+                          isSelected
+                              ? const Color(0xFF1E3A8A)
+                              : Colors.grey[300]!,
+                      width: 1,
+                    ),
+                  ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      _selectCategory(category == 'All' ? null : category);
+                    }
+                  },
                 ),
-              ),
-              selected: isSelected,
-              selectedColor: const Color(0xFF1E3A8A).withOpacity(0.2),
-              backgroundColor: Colors.grey[100],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey[300]!,
-                  width: 1,
-                ),
-              ),
-              onSelected: (selected) {
-                if (selected) {
-                  _selectCategory(category == 'All' ? null : category);
-                }
-              },
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
       ),
     );
   }
@@ -461,10 +491,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         shadowColor: Colors.black.withOpacity(0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(
-            color: Colors.grey,
-            width: 0.5,
-          ),
+          side: const BorderSide(color: Colors.grey, width: 0.5),
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -473,10 +500,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                Colors.grey[50]!.withOpacity(0.8),
-              ],
+              colors: [Colors.white, Colors.grey[50]!.withOpacity(0.8)],
               stops: const [0.0, 1.0],
             ),
           ),
@@ -494,24 +518,31 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       ),
                       child: Hero(
                         tag: 'product-${product.id}',
-                        child: product.image.startsWith('assets/')
-                            ? Image.asset(
-                                product.image,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) {
-                                  print('Asset image error for ${product.image}: $error');
-                                  return _buildErrorImage(product);
-                                },
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: product.image,
-                                fit: BoxFit.contain,
-                                placeholder: (context, url) => AppUtils.buildImageLoadingWidget(),
-                                errorWidget: (context, url, error) {
-                                  print('Network image error for $url: $error');
-                                  return _buildErrorImage(product);
-                                },
-                              ),
+                        child:
+                            product.image.startsWith('assets/')
+                                ? Image.asset(
+                                  product.image,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print(
+                                      'Asset image error for ${product.image}: $error',
+                                    );
+                                    return _buildErrorImage(product);
+                                  },
+                                )
+                                : CachedNetworkImage(
+                                  imageUrl: product.image,
+                                  fit: BoxFit.contain,
+                                  placeholder:
+                                      (context, url) =>
+                                          AppUtils.buildImageLoadingWidget(),
+                                  errorWidget: (context, url, error) {
+                                    print(
+                                      'Network image error for $url: $error',
+                                    );
+                                    return _buildErrorImage(product);
+                                  },
+                                ),
                       ),
                     ),
                   ],
@@ -602,61 +633,71 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
-  void _showFullScreenImageGallery(BuildContext context, Product product, int initialIndex) {
+  void _showFullScreenImageGallery(
+    BuildContext context,
+    Product product,
+    int initialIndex,
+  ) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Text(
-              product.title,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+        pageBuilder:
+            (context, animation, secondaryAnimation) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.black,
+                elevation: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                title: Text(
+                  product.title,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              body: PageView.builder(
+                controller: PageController(initialPage: initialIndex),
+                itemCount: product.getAllImages().length,
+                itemBuilder: (context, index) {
+                  String imagePath = product.getAllImages()[index];
+                  return InteractiveViewer(
+                    panEnabled: true,
+                    boundaryMargin: const EdgeInsets.all(16),
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Center(
+                      child:
+                          imagePath.startsWith('assets/')
+                              ? Image.asset(
+                                imagePath,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print(
+                                    'Asset image error for $imagePath: $error',
+                                  );
+                                  return _buildErrorImagePlaceholder(index);
+                                },
+                              )
+                              : CachedNetworkImage(
+                                imageUrl: imagePath,
+                                fit: BoxFit.contain,
+                                placeholder:
+                                    (context, url) =>
+                                        AppUtils.buildImageLoadingWidget(),
+                                errorWidget: (context, url, error) {
+                                  print('Network image error for $url: $error');
+                                  return _buildErrorImagePlaceholder(index);
+                                },
+                              ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          body: PageView.builder(
-            controller: PageController(initialPage: initialIndex),
-            itemCount: product.getAllImages().length,
-            itemBuilder: (context, index) {
-              String imagePath = product.getAllImages()[index];
-              return InteractiveViewer(
-                panEnabled: true,
-                boundaryMargin: const EdgeInsets.all(16),
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Center(
-                  child: imagePath.startsWith('assets/')
-                      ? Image.asset(
-                          imagePath,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            print('Asset image error for $imagePath: $error');
-                            return _buildErrorImagePlaceholder(index);
-                          },
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: imagePath,
-                          fit: BoxFit.contain,
-                          placeholder: (context, url) => AppUtils.buildImageLoadingWidget(),
-                          errorWidget: (context, url, error) {
-                            print('Network image error for $url: $error');
-                            return _buildErrorImagePlaceholder(index);
-                          },
-                        ),
-                ),
-              );
-            },
-          ),
-        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -679,10 +720,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             const SizedBox(height: 12),
             Text(
               'Image ${index + 1} not available',
-              style: GoogleFonts.poppins(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
+              style: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 14),
             ),
           ],
         ),
@@ -731,82 +769,137 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             margin: const EdgeInsets.symmetric(horizontal: 16),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: product.getAllImages().isNotEmpty
-                                  ? Stack(
-                                      children: [
-                                        StatefulBuilder(
-                                          builder: (context, setState) {
-                                            return PageView.builder(
-                                              controller: pageController,
-                                              itemCount: product.getAllImages().length,
-                                              onPageChanged: (index) {
-                                                setState(() {
-                                                  currentImageIndex = index;
-                                                });
-                                              },
-                                              itemBuilder: (context, imageIndex) {
-                                                String imagePath = product.getAllImages()[imageIndex];
-                                                return Hero(
-                                                  tag: 'product-image-${product.id}-$imageIndex',
-                                                  child: imagePath.startsWith('assets/')
-                                                      ? Image.asset(
-                                                          imagePath,
-                                                          fit: BoxFit.contain,
-                                                          errorBuilder: (context, error, stackTrace) {
-                                                            print('Asset image error for $imagePath: $error');
-                                                            return _buildErrorImagePlaceholder(imageIndex);
-                                                          },
-                                                        )
-                                                      : CachedNetworkImage(
-                                                          imageUrl: imagePath,
-                                                          fit: BoxFit.contain,
-                                                          placeholder: (context, url) =>
-                                                              AppUtils.buildImageLoadingWidget(),
-                                                          errorWidget: (context, url, error) {
-                                                            print('Network image error for $url: $error');
-                                                            return _buildErrorImagePlaceholder(imageIndex);
-                                                          },
-                                                        ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                        Positioned(
-                                          top: 8,
-                                          right: 8,
-                                          child: IconButton(
-                                            icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
-                                            onPressed: () =>
-                                                _showFullScreenImageGallery(context, product, currentImageIndex),
+                              child:
+                                  product.getAllImages().isNotEmpty
+                                      ? Stack(
+                                        children: [
+                                          StatefulBuilder(
+                                            builder: (context, setState) {
+                                              return PageView.builder(
+                                                controller: pageController,
+                                                itemCount:
+                                                    product
+                                                        .getAllImages()
+                                                        .length,
+                                                onPageChanged: (index) {
+                                                  setState(() {
+                                                    currentImageIndex = index;
+                                                  });
+                                                },
+                                                itemBuilder: (
+                                                  context,
+                                                  imageIndex,
+                                                ) {
+                                                  String imagePath =
+                                                      product
+                                                          .getAllImages()[imageIndex];
+                                                  return Hero(
+                                                    tag:
+                                                        'product-image-${product.id}-$imageIndex',
+                                                    child:
+                                                        imagePath.startsWith(
+                                                              'assets/',
+                                                            )
+                                                            ? Image.asset(
+                                                              imagePath,
+                                                              fit:
+                                                                  BoxFit
+                                                                      .contain,
+                                                              errorBuilder: (
+                                                                context,
+                                                                error,
+                                                                stackTrace,
+                                                              ) {
+                                                                print(
+                                                                  'Asset image error for $imagePath: $error',
+                                                                );
+                                                                return _buildErrorImagePlaceholder(
+                                                                  imageIndex,
+                                                                );
+                                                              },
+                                                            )
+                                                            : CachedNetworkImage(
+                                                              imageUrl:
+                                                                  imagePath,
+                                                              fit:
+                                                                  BoxFit
+                                                                      .contain,
+                                                              placeholder:
+                                                                  (
+                                                                    context,
+                                                                    url,
+                                                                  ) =>
+                                                                      AppUtils.buildImageLoadingWidget(),
+                                                              errorWidget: (
+                                                                context,
+                                                                url,
+                                                                error,
+                                                              ) {
+                                                                print(
+                                                                  'Network image error for $url: $error',
+                                                                );
+                                                                return _buildErrorImagePlaceholder(
+                                                                  imageIndex,
+                                                                );
+                                                              },
+                                                            ),
+                                                  );
+                                                },
+                                              );
+                                            },
                                           ),
-                                        ),
-                                        if (product.getAllImages().length > 1)
                                           Positioned(
-                                            bottom: 8,
-                                            left: 0,
-                                            right: 0,
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: List.generate(
-                                                product.getAllImages().length,
-                                                (index) => Container(
-                                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                                  width: 8,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: index == currentImageIndex
-                                                        ? Colors.white
-                                                        : Colors.white.withOpacity(0.5),
+                                            top: 8,
+                                            right: 8,
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.fullscreen_rounded,
+                                                color: Colors.white,
+                                              ),
+                                              onPressed:
+                                                  () =>
+                                                      _showFullScreenImageGallery(
+                                                        context,
+                                                        product,
+                                                        currentImageIndex,
+                                                      ),
+                                            ),
+                                          ),
+                                          if (product.getAllImages().length > 1)
+                                            Positioned(
+                                              bottom: 8,
+                                              left: 0,
+                                              right: 0,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: List.generate(
+                                                  product.getAllImages().length,
+                                                  (index) => Container(
+                                                    margin:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 4,
+                                                        ),
+                                                    width: 8,
+                                                    height: 8,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color:
+                                                          index ==
+                                                                  currentImageIndex
+                                                              ? Colors.white
+                                                              : Colors.white
+                                                                  .withOpacity(
+                                                                    0.5,
+                                                                  ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                      ],
-                                    )
-                                  : _buildErrorImagePlaceholder(0),
+                                        ],
+                                      )
+                                      : _buildErrorImagePlaceholder(0),
                             ),
                           ),
                           Padding(
@@ -815,15 +908,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _getCategoryColor(product.category).withOpacity(0.1),
+                                    color: _getCategoryColor(
+                                      product.category,
+                                    ).withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     product.category,
                                     style: GoogleFonts.poppins(
-                                      color: _getCategoryColor(product.category),
+                                      color: _getCategoryColor(
+                                        product.category,
+                                      ),
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -856,49 +956,52 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                ...product.description.asMap().entries.map(
-                                      (entry) {
-                                        int index = entry.key;
-                                        ProductDescription desc = entry.value;
-                                        return AnimatedContainer(
-                                          duration: Duration(milliseconds: 200 + (index * 50)),
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[50],
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                flex: 2,
-                                                child: Text(
-                                                  desc.key,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: const Color(0xFF1F2937),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                flex: 3,
-                                                child: Text(
-                                                  desc.value,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w400,
-                                                    color: const Color(0xFF6B7280),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                ...product.description.asMap().entries.map((
+                                  entry,
+                                ) {
+                                  int index = entry.key;
+                                  ProductDescription desc = entry.value;
+                                  return AnimatedContainer(
+                                    duration: Duration(
+                                      milliseconds: 200 + (index * 50),
                                     ),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[50],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                            desc.key,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF1F2937),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            desc.value,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w400,
+                                              color: const Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
                               ],
                             ),
                           ),
@@ -937,7 +1040,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                         Expanded(
                                           child: ElevatedButton.icon(
                                             onPressed: _launchEmail,
-                                            icon: const Icon(Icons.email_rounded, size: 18),
+                                            icon: const Icon(
+                                              Icons.email_rounded,
+                                              size: 18,
+                                            ),
                                             label: Text(
                                               'Email Us',
                                               style: GoogleFonts.poppins(
@@ -946,11 +1052,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                               ),
                                             ),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF1E3A8A),
+                                              backgroundColor: const Color(
+                                                0xFF1E3A8A,
+                                              ),
                                               foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                           ),
@@ -959,7 +1071,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                         Expanded(
                                           child: OutlinedButton.icon(
                                             onPressed: _launchTelegram,
-                                            icon: const Icon(Icons.telegram_rounded, size: 18),
+                                            icon: const Icon(
+                                              Icons.telegram_rounded,
+                                              size: 18,
+                                            ),
                                             label: Text(
                                               'Chat Now',
                                               style: GoogleFonts.poppins(
@@ -968,11 +1083,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                               ),
                                             ),
                                             style: OutlinedButton.styleFrom(
-                                              foregroundColor: const Color(0xFF1E3A8A),
-                                              side: const BorderSide(color: Color(0xFF1E3A8A)),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              foregroundColor: const Color(
+                                                0xFF1E3A8A,
+                                              ),
+                                              side: const BorderSide(
+                                                color: Color(0xFF1E3A8A),
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                           ),
@@ -1004,7 +1127,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
       path: 'contact@wonderdoor.com',
       queryParameters: {
         'subject': 'Product Inquiry - Wonder Door Industrial',
-        'body': 'Hello,\n\nI am interested in your door products and would like to get more information.\n\nBest regards,',
+        'body':
+            'Hello,\n\nI am interested in your door products and would like to get more information.\n\nBest regards,',
       },
     );
 
@@ -1040,11 +1164,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               Icon(
-                platform == 'Email' ? Icons.email_rounded : Icons.telegram_rounded,
+                platform == 'Email'
+                    ? Icons.email_rounded
+                    : Icons.telegram_rounded,
                 color: const Color(0xFF1E3A8A),
                 size: 20,
               ),
@@ -1157,11 +1285,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 40,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.search_off_rounded, size: 40, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No products found',
@@ -1211,42 +1335,43 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: AppUtils.buildImageLoadingWidget())
-          : _products.isEmpty
+      body:
+          _isLoading
+              ? Center(child: AppUtils.buildImageLoadingWidget())
+              : _products.isEmpty
               ? _buildEmptyState()
               : SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'All Products',
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1F2937),
-                          ),
+                controller: _scrollController,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'All Products',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1F2937),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Browse our entire collection',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.grey[600],
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Browse our entire collection',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.grey[600],
                         ),
-                        const SizedBox(height: 16),
-                        _buildCategoryFilter(),
-                        const SizedBox(height: 16),
-                        _buildProductGrid(),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildCategoryFilter(),
+                      const SizedBox(height: 16),
+                      _buildProductGrid(),
+                    ],
                   ),
                 ),
+              ),
     );
   }
 }

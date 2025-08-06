@@ -1,4 +1,4 @@
-package com.example.wonderdoor_fixed
+package com.wonderdoor.app
 
 import io.flutter.embedding.android.FlutterActivity
 
